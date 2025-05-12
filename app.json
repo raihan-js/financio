@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "financetracker",
+    "name": "Finance Tracker",
     "slug": "financetracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.READ_SMS",
+        "android.permission.RECEIVE_SMS"
+      ],
+      "package": "raihanjs.financio.tracker.com"
     },
     "web": {
       "bundler": "metro",
