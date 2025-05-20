@@ -1,75 +1,506 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useAppContext } from '@/context/AppContext';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+// Helper function to get icon based on category
+const getCategoryIcon = (category: string): string => {
+  const categoryMap: Record<string, string> = {
+    'Food': 'fast-food-outline',
+    'Transport': 'car-outline',
+    'Shopping': 'cart-outline',
+    'Bills': 'receipt-outline',
+    'Entertainment': 'film-outline',
+    'Health': 'medical-outline',
+    'Income': 'cash-outline',
+    'Other': 'ellipsis-horizontal-outline',
+  };
+  
+  return categoryMap[category] || 'ellipsis-horizontal-outline';
+};
 
 export default function HomeScreen() {
+  const { transactions, userProfile } = useAppContext();
+  
+  // Calculate totals and stats
+  const stats = useMemo(() => {
+    let totalBalance = 0;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    transactions.forEach(transaction => {
+      if (transaction.type === 'income') {
+        totalIncome += transaction.amount;
+        totalBalance += transaction.amount;
+      } else {
+        totalExpense += transaction.amount;
+        totalBalance -= transaction.amount;
+      }
+    });
+    
+    // Calculate growth rates (dummy values for now)
+    const growthRate = 20;
+    const incomeGrowth = 10;
+    const expenseGrowth = 10;
+    
+    return {
+      balance: totalBalance,
+      income: totalIncome,
+      expense: totalExpense,
+      growthRate,
+      incomeGrowth,
+      expenseGrowth
+    };
+  }, [transactions]);
+  // Goals data (this would come from storage in a full implementation)
+  const goals = [
+    {
+      title: 'Sony headphones',
+      current: 200,
+      target: 250,
+      progress: 80,
+      daysLeft: 7,
+      perMonth: 29,
+    },
+  ];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.profile}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>L</Text>
+          </View>
+          <Text style={styles.greeting}>Hello, Lali</Text>
+        </View>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="notifications-outline" size={24} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="settings-outline" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Balance Card */}
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Total balance</Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceAmount}>৳{stats.balance.toLocaleString()}</Text>
+            <View style={styles.growthBadge}>
+              <Ionicons name="arrow-up" size={14} color="#333" />
+              <Text style={styles.growthText}>{stats.growthRate}%</Text>
+            </View>
+          </View>
+          
+          <View style={styles.timeFilterRow}>
+            <TouchableOpacity style={[styles.timeFilterButton, styles.timeFilterActive]}>
+              <Text style={styles.timeFilterActiveText}>Today</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.timeFilterButton}>
+              <Text style={styles.timeFilterText}>Week</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Transaction Overview */}
+        <Text style={styles.sectionTitle}>Transactions</Text>
+        <View style={styles.transactionCards}>
+          {/* Income Card */}
+          <View style={[styles.transactionCard, styles.incomeCard]}>
+            <View style={styles.transactionCardTop}>
+              <Text style={styles.transactionTypeText}>Income</Text>
+              <View style={styles.transactionGrowth}>
+                <Ionicons name="arrow-up" size={12} color="#FFF" />
+                <Text style={styles.transactionGrowthText}>{stats.incomeGrowth}%</Text>
+              </View>
+            </View>
+            <Text style={styles.transactionAmount}>৳{stats.income}</Text>
+            <View style={styles.transactionPatternContainer}>
+              <View style={styles.transactionPattern} />
+            </View>
+          </View>
+          
+          {/* Outcome Card */}
+          <View style={[styles.transactionCard, styles.outcomeCard]}>
+            <View style={styles.transactionCardTop}>
+              <Text style={styles.transactionTypeText}>Outcome</Text>
+              <View style={styles.transactionGrowth}>
+                <Ionicons name="arrow-up" size={12} color="#FFF" />
+                <Text style={styles.transactionGrowthText}>{stats.expenseGrowth}%</Text>
+              </View>
+            </View>
+            <Text style={styles.transactionAmount}>৳{stats.expense}</Text>
+            <View style={styles.transactionPatternContainer}>
+              <View style={styles.transactionPattern} />
+            </View>
+          </View>
+        </View>
+
+        {/* Goals Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Goal</Text>
+        </View>
+        
+        {goals.map((goal, index) => (
+          <View key={index} style={styles.goalCard}>
+            <View style={styles.goalTop}>
+              <Text style={styles.goalTitle}>{goal.title}</Text>
+              <Text style={styles.goalAmount}>
+                ৳{goal.current}/{goal.target}
+              </Text>
+            </View>
+            
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[styles.progressBar, { width: `${goal.progress}%` }]} 
+              />
+            </View>
+            
+            <View style={styles.goalBottom}>
+              <Text style={styles.goalPeriod}>
+                20.12 - 07.07 • {goal.daysLeft} month
+              </Text>
+              <Text style={styles.goalMonthly}>
+                + ৳{goal.perMonth} per month
+              </Text>
+            </View>
+          </View>
+        ))}
+
+        {/* Top Expenses */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top expenses</Text>
+          <TouchableOpacity style={styles.periodDropdown}>
+            <Text style={styles.periodText}>Month</Text>
+            <Ionicons name="chevron-down" size={16} color="#333" />
+          </TouchableOpacity>
+        </View>
+        
+        {/* Top expense items */}
+        <View style={styles.expensesList}>
+          {transactions
+            .filter(t => t.type === 'expense')
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 3)
+            .map((transaction, index) => (
+              <View key={transaction.id} style={styles.expenseItem}>
+                <View style={styles.expenseIconContainer}>
+                  <Ionicons 
+                    name={getCategoryIcon(transaction.category)} 
+                    size={20} 
+                    color="#5F67E8" 
+                  />
+                </View>
+                <View style={styles.expenseDetails}>
+                  <Text style={styles.expenseTitle}>{transaction.description}</Text>
+                  <Text style={styles.expenseCategory}>{transaction.category}</Text>
+                </View>
+                <Text style={styles.expenseAmount}>-৳{transaction.amount.toLocaleString()}</Text>
+              </View>
+            ))}
+            
+          {transactions.filter(t => t.type === 'expense').length === 0 && (
+            <Text style={styles.noDataText}>No expense transactions yet</Text>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F7',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  profile: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#5F67E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  greeting: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+  },
+  iconButton: {
+    padding: 8,
+  },
+  balanceCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#666',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#111',
+    marginRight: 12,
+  },
+  growthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4FE',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  growthText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 2,
+  },
+  timeFilterRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  timeFilterButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  timeFilterActive: {
+    backgroundColor: '#EEEEEE',
+  },
+  timeFilterActiveText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  timeFilterText: {
+    color: '#666',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  transactionCards: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  transactionCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    height: 120,
+  },
+  incomeCard: {
+    backgroundColor: '#5F67E8',
+  },
+  outcomeCard: {
+    backgroundColor: '#00C1FF',
+  },
+  transactionCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  transactionTypeText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  transactionGrowth: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionGrowthText: {
+    color: 'white',
+    fontSize: 12,
+    marginLeft: 2,
+  },
+  transactionAmount: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  transactionPatternContainer: {
+    position: 'absolute',
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    right: 0,
+    overflow: 'hidden',
+    height: 30,
+  },
+  transactionPattern: {
+    height: 60,
+    width: '100%',
+    opacity: 0.1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 100,
+    borderTopRightRadius: 100,
+    transform: [{ scaleX: 1.5 }],
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  periodDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expensesList: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  expenseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  expenseIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F0F1FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  expenseDetails: {
+    flex: 1,
+  },
+  expenseTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  expenseCategory: {
+    fontSize: 12,
+    color: '#666',
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF3B30',
+  },
+  noDataText: {
+    textAlign: 'center',
+    padding: 16,
+    color: '#666',
+  },
+  goalCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  goalTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  goalAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#EEEEEE',
+    borderRadius: 3,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#5F67E8',
+    borderRadius: 3,
+  },
+  goalBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  goalPeriod: {
+    fontSize: 12,
+    color: '#666',
+  },
+  goalMonthly: {
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '500',
   },
 });
