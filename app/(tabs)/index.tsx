@@ -102,16 +102,16 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.profile}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>L</Text>
+            <Text style={styles.avatarText}>{userProfile?.name ? userProfile.name[0].toUpperCase() : 'U'}</Text>
           </View>
-          <Text style={styles.greeting}>Hello, Lali</Text>
+          <Text style={styles.greeting}>Hello, {userProfile?.name || 'User'}</Text>
         </View>
         <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={24} color="#333" />
+          <TouchableOpacity style={styles.iconButton} onPress={handleSyncSMS}>
+            <Ionicons name="sync-outline" size={24} color="#333" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color="#333" />
+            <Ionicons name="notifications-outline" size={24} color="#333" />
           </TouchableOpacity>
         </View>
       </View>
