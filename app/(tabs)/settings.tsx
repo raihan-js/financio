@@ -195,15 +195,6 @@ export default function SettingsScreen() {
             
             <View style={styles.settingDivider} />
             
-            <TouchableOpacity style={styles.settingItem}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: '#FFF0E8' }]}>
-                  <Ionicons name="log-out-outline" size={20} color="#FF9500" />
-                </View>
-                <Text style={styles.settingLabel}>Logout</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#666" />
-            </TouchableOpacity>
           </View>
         </View>
         

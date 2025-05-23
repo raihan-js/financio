@@ -44,6 +44,20 @@ export const saveTransaction = async (transaction: Transaction): Promise<void> =
     
     // Save back to storage
     await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updatedTransactions));
+
+    // Update budget spending if it's an expense and from current month
+    if (transaction.type === 'expense') {
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      if (transaction.date.startsWith(currentMonth)) {
+        // Import budget function dynamically to avoid circular dependency
+        try {
+          const { updateBudgetSpending } = await import('./budgetStorage');
+          await updateBudgetSpending(currentMonth, transaction.category, transaction.amount);
+        } catch (error) {
+          console.warn('Could not update budget spending:', error);
+        }
+      }
+    }
   } catch (error) {
     console.error('Error saving transaction:', error);
     throw error;
@@ -72,9 +86,24 @@ export const deleteTransaction = async (transactionId: string): Promise<void> =>
     if (!existingTransactionsJSON) return;
     
     const existingTransactions: Transaction[] = JSON.parse(existingTransactionsJSON);
+    const transactionToDelete = existingTransactions.find(t => t.id === transactionId);
     const updatedTransactions = existingTransactions.filter(t => t.id !== transactionId);
     
     await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updatedTransactions));
+
+    // Update budget spending if deleting an expense from current month
+    if (transactionToDelete && transactionToDelete.type === 'expense') {
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      if (transactionToDelete.date.startsWith(currentMonth)) {
+        try {
+          const { updateBudgetSpending } = await import('./budgetStorage');
+          // Subtract the amount (negative update)
+          await updateBudgetSpending(currentMonth, transactionToDelete.category, -transactionToDelete.amount);
+        } catch (error) {
+          console.warn('Could not update budget spending after deletion:', error);
+        }
+      }
+    }
   } catch (error) {
     console.error('Error deleting transaction:', error);
     throw error;
@@ -100,6 +129,12 @@ export interface UserProfile {
     deadline: number; // months
     monthlyTarget: number;
     createdAt: string;
+  };
+  // Budget preferences
+  budgetPreferences?: {
+    preferredBudgetType: 'standard' | 'zero_based';
+    autoCreateMonthlyBudget: boolean;
+    budgetAlertThreshold: number; // percentage
   };
 }
 
@@ -135,6 +170,10 @@ export interface AppSettings {
   smsReaderEnabled: boolean;
   notificationsEnabled: boolean;
   currency: string;
+  // Budget-related settings
+  budgetNotificationsEnabled: boolean;
+  monthlyBudgetReminder: boolean;
+  recurringExpenseReminders: boolean;
 }
 
 /**
@@ -144,6 +183,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   smsReaderEnabled: true,
   notificationsEnabled: true,
   currency: 'BDT',
+  budgetNotificationsEnabled: true,
+  monthlyBudgetReminder: true,
+  recurringExpenseReminders: true,
 };
 
 /**
@@ -172,6 +214,43 @@ export const getSettings = async (): Promise<AppSettings> => {
 };
 
 /**
+ * Get transactions for a specific month (for budget tracking)
+ */
+export const getTransactionsForMonth = async (month: string): Promise<Transaction[]> => {
+  try {
+    const allTransactions = await getTransactions();
+    return allTransactions.filter(transaction => transaction.date.startsWith(month));
+  } catch (error) {
+    console.error('Error getting transactions for month:', error);
+    return [];
+  }
+};
+
+/**
+ * Get spending by category for a specific month
+ */
+export const getSpendingByCategory = async (month: string): Promise<Record<string, number>> => {
+  try {
+    const monthTransactions = await getTransactionsForMonth(month);
+    const expenses = monthTransactions.filter(t => t.type === 'expense');
+    
+    const spendingByCategory: Record<string, number> = {};
+    expenses.forEach(transaction => {
+      if (spendingByCategory[transaction.category]) {
+        spendingByCategory[transaction.category] += transaction.amount;
+      } else {
+        spendingByCategory[transaction.category] = transaction.amount;
+      }
+    });
+    
+    return spendingByCategory;
+  } catch (error) {
+    console.error('Error getting spending by category:', error);
+    return {};
+  }
+};
+
+/**
  * Clear all app data
  */
 export const clearAllData = async (): Promise<void> => {
@@ -181,6 +260,14 @@ export const clearAllData = async (): Promise<void> => {
       STORAGE_KEYS.USER_PROFILE,
       STORAGE_KEYS.SETTINGS,
     ]);
+    
+    // Also clear budget data
+    try {
+      const { clearAllBudgetData } = await import('./budgetStorage');
+      await clearAllBudgetData();
+    } catch (error) {
+      console.warn('Could not clear budget data:', error);
+    }
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;

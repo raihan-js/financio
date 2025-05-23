@@ -1,4 +1,19 @@
 import {
+  BudgetNotification,
+  BudgetSettings,
+  DEFAULT_BUDGET_SETTINGS,
+  deleteBudgetByMonth,
+  deleteMonthlyBudget,
+  getBudgetNotifications,
+  getBudgetSettings,
+  getCurrentMonthBudget,
+  getRecurringExpenses,
+  MonthlyBudget,
+  RecurringExpense,
+  saveBudgetSettings,
+  updateBudgetSpending
+} from '@/utils/budgetStorage';
+import {
   AppSettings,
   DEFAULT_SETTINGS,
   deleteTransaction,
@@ -14,6 +29,7 @@ import {
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AppContextType {
+  // Existing transaction functionality
   transactions: Transaction[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
@@ -25,6 +41,17 @@ interface AppContextType {
   isOnboarded: boolean;
   refreshData: () => Promise<void>;
   syncSMS: () => Promise<{ success: boolean; count: number; message: string; details?: any }>;
+
+  // New budget functionality
+  currentBudget: MonthlyBudget | null;
+  budgetNotifications: BudgetNotification[];
+  budgetSettings: BudgetSettings;
+  recurringExpenses: RecurringExpense[];
+  updateBudgetSettings: (settings: Partial<BudgetSettings>) => Promise<void>;
+  refreshBudgetData: () => Promise<void>;
+  getUnreadNotificationsCount: () => number;
+  deleteBudget: (budgetId: string) => Promise<void>;
+  deleteCurrentMonthBudget: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -42,11 +69,18 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  // Existing state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(false);
+
+  // New budget state
+  const [currentBudget, setCurrentBudget] = useState<MonthlyBudget | null>(null);
+  const [budgetNotifications, setBudgetNotifications] = useState<BudgetNotification[]>([]);
+  const [budgetSettings, setBudgetSettings] = useState<BudgetSettings>(DEFAULT_BUDGET_SETTINGS);
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
 
   // Load initial data
   useEffect(() => {
@@ -56,22 +90,45 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Load transactions
+      // Load existing data
       const savedTransactions = await getTransactions();
       setTransactions(savedTransactions);
 
-      // Load user profile
       const savedProfile = await getUserProfile();
       setUserProfile(savedProfile);
       setIsOnboarded(savedProfile?.isOnboarded === true);
 
-      // Load settings
       const savedSettings = await getSettings();
       setSettings(savedSettings);
+
+      // Load budget data
+      await loadBudgetData();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadBudgetData = async () => {
+    try {
+      // Load current month's budget
+      const budget = await getCurrentMonthBudget();
+      setCurrentBudget(budget);
+
+      // Load budget notifications
+      const notifications = await getBudgetNotifications();
+      setBudgetNotifications(notifications);
+
+      // Load budget settings
+      const budgetSettings = await getBudgetSettings();
+      setBudgetSettings(budgetSettings);
+
+      // Load recurring expenses
+      const expenses = await getRecurringExpenses();
+      setRecurringExpenses(expenses);
+    } catch (error) {
+      console.error('Error loading budget data:', error);
     }
   };
 
@@ -85,6 +142,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       
       await saveTransaction(newTransaction);
       setTransactions(prev => [...prev, newTransaction]);
+
+      // Update budget spending if it's an expense
+      if (newTransaction.type === 'expense') {
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        if (newTransaction.date.startsWith(currentMonth)) {
+          await updateBudgetSpending(currentMonth, newTransaction.category, newTransaction.amount);
+          // Refresh budget data to get updated spending and potential notifications
+          await loadBudgetData();
+        }
+      }
     } catch (error) {
       console.error('Error adding transaction:', error);
       throw error;
@@ -95,6 +162,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       await deleteTransaction(id);
       setTransactions(prev => prev.filter(t => t.id !== id));
+      
+      // Refresh budget data since spending amounts may have changed
+      await loadBudgetData();
     } catch (error) {
       console.error('Error removing transaction:', error);
       throw error;
@@ -124,6 +194,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
+  const updateBudgetSettings = async (newBudgetSettings: Partial<BudgetSettings>) => {
+    try {
+      const updatedBudgetSettings = { ...budgetSettings, ...newBudgetSettings };
+      await saveBudgetSettings(updatedBudgetSettings);
+      setBudgetSettings(updatedBudgetSettings);
+    } catch (error) {
+      console.error('Error updating budget settings:', error);
+      throw error;
+    }
+  };
+
   const syncSMS = async () => {
     try {
       // Import the function dynamically to avoid circular dependency
@@ -147,9 +228,40 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     await loadData();
   };
 
+  const refreshBudgetData = async () => {
+    await loadBudgetData();
+  };
+
+  const getUnreadNotificationsCount = (): number => {
+    return budgetNotifications.filter(notification => !notification.isRead).length;
+  };
+
+  const deleteBudget = async (budgetId: string) => {
+    try {
+      await deleteMonthlyBudget(budgetId);
+      // Refresh budget data to update the current budget state
+      await loadBudgetData();
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+      throw error;
+    }
+  };
+
+  const deleteCurrentMonthBudget = async () => {
+    try {
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      await deleteBudgetByMonth(currentMonth);
+      setCurrentBudget(null);
+    } catch (error) {
+      console.error('Error deleting current month budget:', error);
+      throw error;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
+        // Existing functionality
         transactions,
         addTransaction,
         removeTransaction,
@@ -161,6 +273,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         isOnboarded,
         refreshData,
         syncSMS,
+
+        // New budget functionality
+        currentBudget,
+        budgetNotifications,
+        budgetSettings,
+        recurringExpenses,
+        updateBudgetSettings,
+        refreshBudgetData,
+        getUnreadNotificationsCount,
+        deleteBudget,
+        deleteCurrentMonthBudget,
       }}
     >
       {children}
