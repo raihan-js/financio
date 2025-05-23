@@ -1,15 +1,15 @@
 import {
-    AppSettings,
-    DEFAULT_SETTINGS,
-    deleteTransaction,
-    getSettings,
-    getTransactions,
-    getUserProfile,
-    saveSettings,
-    saveTransaction,
-    saveUserProfile,
-    Transaction,
-    UserProfile
+  AppSettings,
+  DEFAULT_SETTINGS,
+  deleteTransaction,
+  getSettings,
+  getTransactions,
+  getUserProfile,
+  saveSettings,
+  saveTransaction,
+  saveUserProfile,
+  Transaction,
+  UserProfile
 } from '@/utils/storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
@@ -22,7 +22,9 @@ interface AppContextType {
   settings: AppSettings;
   updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
   isLoading: boolean;
+  isOnboarded: boolean;
   refreshData: () => Promise<void>;
+  syncSMS: () => Promise<{ success: boolean; count: number; error?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,6 +46,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnboarded, setIsOnboarded] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -60,6 +63,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       // Load user profile
       const savedProfile = await getUserProfile();
       setUserProfile(savedProfile);
+      setIsOnboarded(savedProfile?.isOnboarded === true);
 
       // Load settings
       const savedSettings = await getSettings();
@@ -99,8 +103,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateUserProfile = async (profile: UserProfile) => {
     try {
-      await saveUserProfile(profile);
-      setUserProfile(profile);
+      const updatedProfile = { ...profile, isOnboarded: true };
+      await saveUserProfile(updatedProfile);
+      setUserProfile(updatedProfile);
+      setIsOnboarded(true);
     } catch (error) {
       console.error('Error updating user profile:', error);
       throw error;
@@ -115,6 +121,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error updating settings:', error);
       throw error;
+    }
+  };
+
+  const syncSMS = async () => {
+    try {
+      // Import the function dynamically to avoid circular dependency
+      const { autoSyncSMS } = await import('@/utils/smsReader');
+      const result = await autoSyncSMS(userProfile?.bankName);
+      if (result.success && result.count > 0) {
+        // Refresh transactions to show new SMS-based transactions
+        await refreshData();
+      }
+      return result;
+    } catch (error) {
+      return { 
+        success: false, 
+        count: 0, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
     }
   };
 
@@ -133,7 +158,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         settings,
         updateSettings,
         isLoading,
+        isOnboarded,
         refreshData,
+        syncSMS,
       }}
     >
       {children}

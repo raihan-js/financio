@@ -1,62 +1,62 @@
+import { useAppContext } from '@/context/AppContext';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Dummy transaction data
-const transactions = [
-  {
-    id: '1',
-    title: 'Grocery Shopping',
-    amount: -1200,
-    date: '2025-05-19',
-    category: 'Food',
-  },
-  {
-    id: '2',
-    title: 'Salary',
-    amount: 45000,
-    date: '2025-05-15',
-    category: 'Income',
-  },
-  {
-    id: '3',
-    title: 'Electricity Bill',
-    amount: -2800,
-    date: '2025-05-10',
-    category: 'Utilities',
-  },
-  {
-    id: '4',
-    title: 'Freelance Work',
-    amount: 15000,
-    date: '2025-05-08',
-    category: 'Income',
-  },
-  {
-    id: '5',
-    title: 'Restaurant',
-    amount: -980,
-    date: '2025-05-05',
-    category: 'Food',
-  },
-];
-
 export default function TransactionsScreen() {
-  const renderTransactionItem = ({ item }) => (
+  const { transactions, removeTransaction } = useAppContext();
+
+  const handleDeleteTransaction = (transactionId: string, description: string) => {
+    Alert.alert(
+      'Delete Transaction',
+      `Are you sure you want to delete "${description}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeTransaction(transactionId);
+              Alert.alert('Success', 'Transaction deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete transaction');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderTransactionItem = ({ item }: { item: any }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionInfo}>
-        <Text style={styles.transactionTitle}>{item.title}</Text>
+        <Text style={styles.transactionTitle}>{item.description}</Text>
         <Text style={styles.transactionCategory}>{item.category}</Text>
-      </View>
-      <View style={styles.transactionAmount}>
-        <Text style={[
-          styles.amountText, 
-          item.amount > 0 ? styles.incomeText : styles.expenseText
-        ]}>
-          {item.amount > 0 ? `+৳${item.amount.toLocaleString()}` : `-৳${Math.abs(item.amount).toLocaleString()}`}
+        <Text style={styles.transactionDate}>
+          {new Date(item.date).toLocaleDateString()}
         </Text>
-        <Text style={styles.dateText}>{item.date}</Text>
+      </View>
+      <View style={styles.transactionRight}>
+        <View style={styles.transactionAmount}>
+          <Text style={[
+            styles.amountText, 
+            item.type === 'income' ? styles.incomeText : styles.expenseText
+          ]}>
+            {item.type === 'income' 
+              ? `+৳${item.amount.toLocaleString()}` 
+              : `-৳${item.amount.toLocaleString()}`
+            }
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={() => handleDeleteTransaction(item.id, item.description)}
+        >
+          <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -73,6 +73,14 @@ export default function TransactionsScreen() {
         renderItem={renderTransactionItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No transactions yet</Text>
+            <Text style={styles.emptySubtext}>Add a transaction or sync your SMS to get started</Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -104,6 +112,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -122,6 +131,16 @@ const styles = StyleSheet.create({
   transactionCategory: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 2,
+  },
+  transactionDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  transactionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   transactionAmount: {
     alignItems: 'flex-end',
@@ -129,7 +148,6 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
   incomeText: {
     color: '#34C759',
@@ -137,8 +155,31 @@ const styles = StyleSheet.create({
   expenseText: {
     color: '#FF3B30',
   },
-  dateText: {
-    fontSize: 12,
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFE8E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '500',
     color: '#666',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

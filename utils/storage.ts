@@ -88,6 +88,9 @@ export interface UserProfile {
   name: string;
   email?: string;
   avatar?: string;
+  bankName?: string;
+  smsFormat?: string;
+  isOnboarded?: boolean;
 }
 
 /**

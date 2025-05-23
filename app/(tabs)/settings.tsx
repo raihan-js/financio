@@ -7,7 +7,23 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, userProfile, updateUserProfile, refreshData } = useAppContext();
+  const { settings, updateSettings, userProfile, updateUserProfile, refreshData, syncSMS } = useAppContext();
+  
+  const handleSyncSMS = async () => {
+    try {
+      const result = await syncSMS();
+      if (result.success) {
+        Alert.alert(
+          'SMS Sync Complete', 
+          `Found and processed ${result.count} new transactions from your SMS messages.`
+        );
+      } else {
+        Alert.alert('Sync Failed', result.error || 'Unable to sync SMS messages');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sync SMS messages');
+    }
+  };
   
   const handleClearData = () => {
     Alert.alert(
@@ -69,12 +85,27 @@ export default function SettingsScreen() {
                 <Text style={styles.settingLabel}>SMS Reading</Text>
               </View>
               <Switch
-                value={settings.smsReadingEnabled}
-                onValueChange={(value) => updateSettings({ smsReadingEnabled: value })}
+                value={settings.smsReaderEnabled}
+                onValueChange={(value) => updateSettings({ smsReaderEnabled: value })}
                 trackColor={{ false: '#CCCCCC', true: '#5F67E8' }}
                 thumbColor={'#FFFFFF'}
               />
             </View>
+            
+            <View style={styles.settingDivider} />
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={handleSyncSMS}
+            >
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIcon, { backgroundColor: '#E8F5E8' }]}>
+                  <Ionicons name="sync-outline" size={20} color="#34C759" />
+                </View>
+                <Text style={styles.settingLabel}>Sync SMS Now</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#666" />
+            </TouchableOpacity>
             
             <View style={styles.settingDivider} />
             
@@ -95,10 +126,7 @@ export default function SettingsScreen() {
             
             <View style={styles.settingDivider} />
             
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={handleClearData}
-            >
+            <TouchableOpacity style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={[styles.settingIcon, { backgroundColor: '#F0F1FE' }]}>
                   <Ionicons name="cash-outline" size={20} color="#5F67E8" />
@@ -118,7 +146,10 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>App</Text>
           
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={handleClearData}
+            >
               <View style={styles.settingLeft}>
                 <View style={[styles.settingIcon, { backgroundColor: '#FFE8E8' }]}>
                   <Ionicons name="trash-outline" size={20} color="#FF3B30" />

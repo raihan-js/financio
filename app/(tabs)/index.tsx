@@ -2,12 +2,12 @@ import { useAppContext } from '@/context/AppContext';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Helper function to get icon based on category
-const getCategoryIcon = (category: string): string => {
-  const categoryMap: Record<string, string> = {
+const getCategoryIcon = (category: string): any => {
+  const categoryMap: Record<string, any> = {
     'Food': 'fast-food-outline',
     'Transport': 'car-outline',
     'Shopping': 'cart-outline',
@@ -22,7 +22,7 @@ const getCategoryIcon = (category: string): string => {
 };
 
 export default function HomeScreen() {
-  const { transactions, userProfile } = useAppContext();
+  const { transactions, userProfile, syncSMS, removeTransaction } = useAppContext();
   
   // Calculate totals and stats
   const stats = useMemo(() => {
@@ -40,10 +40,10 @@ export default function HomeScreen() {
       }
     });
     
-    // Calculate growth rates (dummy values for now)
-    const growthRate = 20;
-    const incomeGrowth = 10;
-    const expenseGrowth = 10;
+    // Calculate growth rates (dummy values for now - in a real app you'd compare with previous period)
+    const growthRate = totalBalance > 0 ? 15 : -5;
+    const incomeGrowth = totalIncome > 0 ? 12 : 0;
+    const expenseGrowth = totalExpense > 0 ? 8 : 0;
     
     return {
       balance: totalBalance,
@@ -54,17 +54,45 @@ export default function HomeScreen() {
       expenseGrowth
     };
   }, [transactions]);
+
+  const handleSyncSMS = async () => {
+    try {
+      const result = await syncSMS();
+      if (result.success) {
+        Alert.alert(
+          'SMS Sync Complete', 
+          `Found and processed ${result.count} new transactions from your SMS messages.`
+        );
+      } else {
+        Alert.alert('Sync Failed', result.error || 'Unable to sync SMS messages');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sync SMS messages');
+    }
+  };
+
+  const handleDeleteTransaction = (transactionId: string, description: string) => {
+    Alert.alert(
+      'Delete Transaction',
+      `Are you sure you want to delete "${description}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeTransaction(transactionId);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete transaction');
+            }
+          }
+        }
+      ]
+    );
+  };
   // Goals data (this would come from storage in a full implementation)
-  const goals = [
-    {
-      title: 'Sony headphones',
-      current: 200,
-      target: 250,
-      progress: 80,
-      daysLeft: 7,
-      perMonth: 29,
-    },
-  ];
+  // Removed placeholder data
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,36 +175,17 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Goals Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Goal</Text>
-        </View>
-        
-        {goals.map((goal, index) => (
-          <View key={index} style={styles.goalCard}>
-            <View style={styles.goalTop}>
-              <Text style={styles.goalTitle}>{goal.title}</Text>
-              <Text style={styles.goalAmount}>
-                ৳{goal.current}/{goal.target}
-              </Text>
+        {/* Goals Section - Only show if there are goals */}
+        {/* For now, we'll hide this section since we removed placeholder data */}
+        {false && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Goal</Text>
             </View>
             
-            <View style={styles.progressBarContainer}>
-              <View 
-                style={[styles.progressBar, { width: `${goal.progress}%` }]} 
-              />
-            </View>
-            
-            <View style={styles.goalBottom}>
-              <Text style={styles.goalPeriod}>
-                20.12 - 07.07 • {goal.daysLeft} month
-              </Text>
-              <Text style={styles.goalMonthly}>
-                + ৳{goal.perMonth} per month
-              </Text>
-            </View>
-          </View>
-        ))}
+            {/* Goals would be rendered here */}
+          </>
+        )}
 
         {/* Top Expenses */}
         <View style={styles.sectionHeader}>
@@ -197,7 +206,7 @@ export default function HomeScreen() {
               <View key={transaction.id} style={styles.expenseItem}>
                 <View style={styles.expenseIconContainer}>
                   <Ionicons 
-                    name={getCategoryIcon(transaction.category)} 
+                    name={getCategoryIcon(transaction.category) as any}
                     size={20} 
                     color="#5F67E8" 
                   />
@@ -207,6 +216,12 @@ export default function HomeScreen() {
                   <Text style={styles.expenseCategory}>{transaction.category}</Text>
                 </View>
                 <Text style={styles.expenseAmount}>-৳{transaction.amount.toLocaleString()}</Text>
+                <TouchableOpacity 
+                  style={styles.expenseDeleteButton}
+                  onPress={() => handleDeleteTransaction(transaction.id, transaction.description)}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                </TouchableOpacity>
               </View>
             ))}
             
@@ -402,6 +417,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  periodText: {
+    fontSize: 14,
+    color: '#333',
+    marginRight: 4,
+  },
   expensesList: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -446,6 +466,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FF3B30',
+    marginRight: 8,
+  },
+  expenseDeleteButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFE8E8',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   noDataText: {
     textAlign: 'center',
