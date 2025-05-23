@@ -1,16 +1,24 @@
+import SplashScreen from '@/components/SplashScreen';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function RootNavigator() {
   const { isOnboarded, isLoading } = useAppContext();
+  const [showSplash, setShowSplash] = useState(true);
 
-  if (isLoading) {
-    return null; // Or a loading screen
+  // Hide splash screen after animation completes
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+  };
+
+  // Show splash screen while loading or if explicitly shown
+  if (showSplash || isLoading) {
+    return <SplashScreen onAnimationComplete={handleSplashComplete} />;
   }
 
   return (
@@ -37,7 +45,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <RootNavigator />
         </AppProvider>
       </SafeAreaProvider>
