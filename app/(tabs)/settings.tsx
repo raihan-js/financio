@@ -13,15 +13,37 @@ export default function SettingsScreen() {
     try {
       const result = await syncSMS();
       if (result.success) {
+        const details = result.details;
+        let message = result.message;
+        
+        if (details && details.errors > 0) {
+          message += `\n\nNote: ${details.errors} messages couldn't be processed. This is normal for non-transaction SMS.`;
+        }
+        
         Alert.alert(
           'SMS Sync Complete', 
-          `Found and processed ${result.count} new transactions from your SMS messages.`
+          message,
+          [
+            { text: 'OK', style: 'default' }
+          ]
         );
       } else {
-        Alert.alert('Sync Failed', result.error || 'Unable to sync SMS messages');
+        Alert.alert(
+          'SMS Sync Failed', 
+          result.message || 'Unable to sync SMS messages. Please check your permissions and try again.',
+          [
+            { text: 'OK', style: 'default' }
+          ]
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to sync SMS messages');
+      Alert.alert(
+        'SMS Sync Error', 
+        'An unexpected error occurred while syncing SMS messages. Please try again later.',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
     }
   };
   

@@ -61,10 +61,15 @@ export default function HomeScreen() {
       if (result.success) {
         Alert.alert(
           'SMS Sync Complete', 
-          `Found and processed ${result.count} new transactions from your SMS messages.`
+          result.message,
+          [{ text: 'OK', style: 'default' }]
         );
       } else {
-        Alert.alert('Sync Failed', result.error || 'Unable to sync SMS messages');
+        Alert.alert(
+          'SMS Sync Failed', 
+          result.message || 'Unable to sync SMS messages',
+          [{ text: 'OK', style: 'default' }]
+        );
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to sync SMS messages');
@@ -175,15 +180,54 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Goals Section - Only show if there are goals */}
-        {/* For now, we'll hide this section since we removed placeholder data */}
-        {false && (
+        {/* Financial Goal Section */}
+        {userProfile?.financialGoal && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Goal</Text>
+              <Text style={styles.sectionTitle}>Your Goal</Text>
+              <TouchableOpacity style={styles.goalSettings}>
+                <Ionicons name="settings-outline" size={16} color="#333" />
+              </TouchableOpacity>
             </View>
             
-            {/* Goals would be rendered here */}
+            <View style={styles.goalCard}>
+              <View style={styles.goalHeader}>
+                <View style={styles.goalInfo}>
+                  <Text style={styles.goalTitle}>{userProfile.financialGoal.title}</Text>
+                  <Text style={styles.goalType}>{userProfile.financialGoal.type.replace('_', ' ').toUpperCase()}</Text>
+                </View>
+                <View style={styles.goalAmounts}>
+                  <Text style={styles.goalCurrent}>৳{userProfile.financialGoal.currentAmount.toLocaleString()}</Text>
+                  <Text style={styles.goalTarget}>of ৳{userProfile.financialGoal.targetAmount.toLocaleString()}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.progressBarContainer}>
+                <View 
+                  style={[
+                    styles.progressBar, 
+                    { width: `${Math.min((userProfile.financialGoal.currentAmount / userProfile.financialGoal.targetAmount) * 100, 100)}%` }
+                  ]} 
+                />
+              </View>
+              
+              <View style={styles.goalStats}>
+                <View style={styles.goalStat}>
+                  <Text style={styles.goalStatValue}>৳{userProfile.financialGoal.monthlyTarget.toLocaleString()}</Text>
+                  <Text style={styles.goalStatLabel}>Monthly target</Text>
+                </View>
+                <View style={styles.goalStat}>
+                  <Text style={styles.goalStatValue}>{userProfile.financialGoal.deadline} months</Text>
+                  <Text style={styles.goalStatLabel}>Time remaining</Text>
+                </View>
+                <View style={styles.goalStat}>
+                  <Text style={styles.goalStatValue}>
+                    {Math.round((userProfile.financialGoal.currentAmount / userProfile.financialGoal.targetAmount) * 100)}%
+                  </Text>
+                  <Text style={styles.goalStatLabel}>Complete</Text>
+                </View>
+              </View>
+            </View>
           </>
         )}
 
@@ -481,55 +525,80 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#666',
   },
+  goalSettings: {
+    padding: 4,
+  },
   goalCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    padding: 20,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  goalTop: {
+  goalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  goalInfo: {
+    flex: 1,
+    marginRight: 16,
   },
   goalTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  goalAmount: {
-    fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+  },
+  goalType: {
+    fontSize: 12,
+    color: '#5F67E8',
+    fontWeight: '500',
+  },
+  goalAmounts: {
+    alignItems: 'flex-end',
+  },
+  goalCurrent: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  goalTarget: {
+    fontSize: 14,
+    color: '#666',
   },
   progressBarContainer: {
-    height: 6,
-    backgroundColor: '#EEEEEE',
-    borderRadius: 3,
-    marginBottom: 12,
+    height: 8,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 4,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
     backgroundColor: '#5F67E8',
-    borderRadius: 3,
+    borderRadius: 4,
   },
-  goalBottom: {
+  goalStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  goalPeriod: {
+  goalStat: {
+    alignItems: 'center',
+  },
+  goalStatValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  goalStatLabel: {
     fontSize: 12,
     color: '#666',
-  },
-  goalMonthly: {
-    fontSize: 12,
-    color: '#333',
-    fontWeight: '500',
   },
 });

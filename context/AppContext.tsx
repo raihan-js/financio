@@ -24,7 +24,7 @@ interface AppContextType {
   isLoading: boolean;
   isOnboarded: boolean;
   refreshData: () => Promise<void>;
-  syncSMS: () => Promise<{ success: boolean; count: number; error?: string }>;
+  syncSMS: () => Promise<{ success: boolean; count: number; message: string; details?: any }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -138,7 +138,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       return { 
         success: false, 
         count: 0, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        message: error instanceof Error ? error.message : 'Unknown error occurred during SMS sync'
       };
     }
   };

@@ -82,7 +82,7 @@ export const deleteTransaction = async (transactionId: string): Promise<void> =>
 };
 
 /**
- * User profile structure
+ * User profile structure with financial planning data
  */
 export interface UserProfile {
   name: string;
@@ -91,6 +91,16 @@ export interface UserProfile {
   bankName?: string;
   smsFormat?: string;
   isOnboarded?: boolean;
+  monthlyIncome?: number;
+  financialGoal?: {
+    type: string;
+    title: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline: number; // months
+    monthlyTarget: number;
+    createdAt: string;
+  };
 }
 
 /**
