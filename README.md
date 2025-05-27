@@ -1,5 +1,6 @@
-# Welcome to your Expo app 👋
+![Group 34854](https://github.com/user-attachments/assets/065a599f-9bf5-4044-970e-8162117365a7)
 
+# Welcome to Spendly
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
